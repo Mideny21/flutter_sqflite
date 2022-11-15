@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:sqflite/sqflite.dart';
+
+import 'home.dart';
+import 'person_model.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,101 +17,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.cyan,
       ),
       home: const HomePage(),
-    );
-  }
-}
-
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  late final PersonDB _crudStorage;
-
-  @override
-  void initState() {
-    _crudStorage = PersonDB(dbName: 'db.sqlite');
-    _crudStorage.open();
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    _crudStorage.close();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Crud Example"),
-      ),
-      body: StreamBuilder(
-        stream: _crudStorage.all(),
-        builder: (context, snapshot) {
-          switch (snapshot.connectionState) {
-            case ConnectionState.active:
-            case ConnectionState.waiting:
-              if (snapshot.data == null) {
-                return const CircularProgressIndicator();
-              }
-              final people = snapshot.data as List<Person>;
-              if (kDebugMode) {
-                print(people);
-              }
-              return Column(
-                children: [
-                  ComposeWidget(onCompose: (firstName, lastName) async {
-                    await _crudStorage.create(firstName, lastName);
-                  }),
-                  Expanded(
-                    child: ListView.builder(
-                        itemCount: people.length,
-                        itemBuilder: (context, index) {
-                          final person = people[index];
-                          return ListTile(
-                            onTap: () async {
-                              final editedPerson =
-                                  await showUpdateDialog(context, person);
-                              if (editedPerson != null) {
-                                await _crudStorage.update(editedPerson);
-                              }
-                            },
-                            title: Text(person.fullName),
-                            subtitle: Text('ID: ${person.id}'),
-                            trailing: TextButton(
-                              onPressed: () async {
-                                final shouldDelete =
-                                    await showDeleteDialog(context);
-                                if (kDebugMode) {
-                                  print(shouldDelete);
-                                }
-                                if (shouldDelete) {
-                                  await _crudStorage.delete(person);
-                                }
-                              },
-                              child: const Icon(
-                                  Icons.disabled_by_default_rounded,
-                                  color: Colors.red),
-                            ),
-                          );
-                        }),
-                  ),
-                ],
-              );
-            default:
-              return const Center(child: CircularProgressIndicator());
-          }
-        },
-      ),
     );
   }
 }
@@ -222,204 +132,76 @@ class _ComposeWidgetState extends State<ComposeWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        TextField(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+      child: Column(
+        children: [
+          TextField(
+            cursorHeight: 20,
+            autofocus: false,
             controller: _firstNameController,
-            decoration: const InputDecoration(hintText: 'Enter  first name')),
-        TextField(
+            decoration: InputDecoration(
+              hintText: "Enter  first name",
+              prefixIcon: const Icon(Icons.person),
+              contentPadding:
+                  const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: const BorderSide(color: Colors.grey, width: 2),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: const BorderSide(color: Colors.grey, width: 1.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                gapPadding: 0.0,
+                borderRadius: BorderRadius.circular(30),
+                borderSide: const BorderSide(color: Colors.cyan, width: 1.5),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            cursorHeight: 20,
+            autofocus: false,
             controller: _lastNameController,
-            decoration: const InputDecoration(hintText: 'Enter  last name')),
-        TextButton(
-            onPressed: () {
-              final firstName = _firstNameController.text;
-              final lastName = _lastNameController.text;
-              widget.onCompose(firstName, lastName);
-              _firstNameController.text = '';
-              _lastNameController.text = '';
-            },
-            child: const Text("Add to list"))
-      ],
+            decoration: InputDecoration(
+              hintText: "Enter  last name",
+              prefixIcon: const Icon(Icons.person),
+              contentPadding:
+                  const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: const BorderSide(color: Colors.grey, width: 2),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: const BorderSide(color: Colors.grey, width: 1.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                gapPadding: 0.0,
+                borderRadius: BorderRadius.circular(30),
+                borderSide: const BorderSide(color: Colors.cyan, width: 1.5),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  side: const BorderSide(color: Colors.cyan)),
+              onPressed: () {
+                final firstName = _firstNameController.text;
+                final lastName = _lastNameController.text;
+                widget.onCompose(firstName, lastName);
+                _firstNameController.text = '';
+                _lastNameController.text = '';
+              },
+              child: const Text('Add to List')),
+        ],
+      ),
     );
   }
-}
-
-class PersonDB {
-  final String dbName;
-  PersonDB({required this.dbName});
-  Database? _db;
-  List<Person> _persons = [];
-  final _streamController = StreamController<List<Person>>.broadcast();
-
-  Future<List<Person>> _fetchPeople() async {
-    final db = _db;
-    if (db == null) {
-      return [];
-    }
-
-    try {
-      final read = await db.query('PEOPLE',
-          distinct: true,
-          columns: [
-            'ID',
-            'FIRST_NAME',
-            'LAST_NAME',
-          ],
-          orderBy: 'ID');
-
-      final people = read.map((row) => Person.fromRow(row)).toList();
-      return people;
-    } catch (e) {
-      return [];
-    }
-  }
-
-  Future<bool> create(String firstName, String lastName) async {
-    final db = _db;
-    if (db == null) {
-      return false;
-    }
-
-    try {
-      final id = await db.insert('PEOPLE', {
-        'FIRST_NAME': firstName,
-        'LAST_NAME': lastName,
-      });
-      final person = Person(id: id, firstName: firstName, lastName: lastName);
-      _persons.add(person);
-      _streamController.add(_persons);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  Future<bool> update(Person person) async {
-    final db = _db;
-    if (db == null) {
-      return false;
-    }
-
-    try {
-      final updateCount = await db.update(
-        'PEOPLE',
-        {
-          'FIRST_NAME': person.firstName,
-          'LAST_NAME': person.lastName,
-        },
-        where: 'ID = ?',
-        whereArgs: [person.id],
-      );
-      if (updateCount == 1) {
-        _persons.removeWhere((element) => element.id == person.id);
-        _persons.add(person);
-        _streamController.add(_persons);
-        return true;
-      } else {
-        return false;
-      }
-    } catch (e) {
-      return false;
-    }
-  }
-
-  Future<bool> delete(Person person) async {
-    final db = _db;
-    if (db == null) {
-      return false;
-    }
-
-    try {
-      final deleteCount =
-          await db.delete('PEOPLE', where: 'ID = ?', whereArgs: [person.id]);
-
-      if (deleteCount == 1) {
-        _persons.remove(person);
-        _streamController.add(_persons);
-        return true;
-      } else {
-        return false;
-      }
-    } catch (e) {
-      return false;
-    }
-  }
-
-  Future<bool> close() async {
-    final db = _db;
-    if (db == null) {
-      return false;
-    }
-
-    await db.close();
-    return true;
-  }
-
-  Future<bool> open() async {
-    if (_db != null) {
-      return true;
-    }
-
-    final directory = await getApplicationDocumentsDirectory();
-    final path = '${directory.path}/$dbName';
-
-    try {
-      final db = await openDatabase(path);
-      _db = db;
-
-      // Create table
-      const create = '''
-      CREATE TABLE IF NOT EXISTS PEOPLE(
-      ID INTEGER PRIMARY KEY AUTOINCREMENT,
-      FIRST_NAME STRING NOT  NULL,
-      LAST_NAME STRING NOT NULL
-      )
-        ''';
-
-      await db.execute(create);
-      // read all existing Person objects from the db
-      _persons = await _fetchPeople();
-      _streamController.add(_persons);
-      return true;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error = $e');
-      }
-      return false;
-    }
-  }
-
-  Stream<List<Person>> all() =>
-      _streamController.stream.map((persons) => persons..sort());
-}
-
-class Person implements Comparable {
-  final int id;
-  final String firstName;
-  final String lastName;
-  Person({
-    required this.id,
-    required this.firstName,
-    required this.lastName,
-  });
-
-  String get fullName => '$firstName $lastName';
-
-  Person.fromRow(Map<String, Object?> row)
-      : id = row['ID'] as int,
-        firstName = row['FIRST_NAME'] as String,
-        lastName = row['LAST_NAME'] as String;
-
-  @override
-  int compareTo(covariant Person other) => other.id.compareTo(id);
-
-  @override
-  bool operator ==(covariant Person other) => id == other.id;
-
-  @override
-  int get hashCode => id.hashCode;
-
-  @override
-  String toString() =>
-      'Person, id = $id, firstName: $firstName, lastName: $lastName';
 }
